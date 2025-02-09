@@ -1,28 +1,29 @@
 import yt_dlp
 import json
 
-def handler(request):
-    query = request.args
-    video_url = query.get("url")
+def handler(request, response):
+    video_url = request.args.get("url")
 
     if not video_url:
-        return {"error": "Missing 'url' parameter"}, 400
+        response.status_code = 400
+        return response.json({"error": "Missing 'url' parameter"})
 
     ydl_opts = {
         'quiet': True,
         'noplaylist': True,
-        'format': 'bestaudio/best'  # Best audio & video
+        'format': 'bestaudio/best'  # Best quality available
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
 
-            return {
-                "title": info.get("title", "Unknown"),
-                "thumbnail": info.get("thumbnail", ""),
-                "download_url": info.get("url")
-            }, 200
+        return response.json({
+            "title": info.get("title", "Unknown"),
+            "thumbnail": info.get("thumbnail", ""),
+            "download_url": info.get("url")
+        })
 
     except Exception as e:
-        return {"error": str(e)}, 500
+        response.status_code = 500
+        return response.json({"error": str(e)})

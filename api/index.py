@@ -1,35 +1,28 @@
 import yt_dlp
-from http.server import BaseHTTPRequestHandler
 import json
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        try:
-            from urllib.parse import urlparse, parse_qs
-            query_components = parse_qs(urlparse(self.path).query)
-            url = query_components.get("url", [None])[0]
-            media_type = query_components.get("type", ["video"])[0]
+def handler(request):
+    query = request.args
+    video_url = query.get("url")
 
-            if not url:
-                self.send_error(400, "Missing YouTube URL")
-                return
+    if not video_url:
+        return {"error": "Missing 'url' parameter"}, 400
 
-            ydl_opts = {
-                'format': 'bestaudio/best' if media_type == "audio" else 'bestvideo+bestaudio/best',
-                'quiet': True
-            }
+    ydl_opts = {
+        'quiet': True,
+        'noplaylist': True,
+        'format': 'bestaudio/best'  # Best audio & video
+    }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                download_url = info["url"]
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
 
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"download_url": download_url}).encode("utf-8"))
-        
-        except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return {
+                "title": info.get("title", "Unknown"),
+                "thumbnail": info.get("thumbnail", ""),
+                "download_url": info.get("url")
+            }, 200
+
+    except Exception as e:
+        return {"error": str(e)}, 500

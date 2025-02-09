@@ -1,12 +1,15 @@
+from flask import Flask, request, jsonify
 import yt_dlp
-import json
 
-def handler(request, response):
+app = Flask(__name__)
+
+@app.route("/download", methods=["GET"])
+def handler():
     video_url = request.args.get("url")
+    print("Starting API...")
 
     if not video_url:
-        response.status_code = 400
-        return response.json({"error": "Missing 'url' parameter"})
+        return jsonify({"error": "Missing 'url' parameter"}), 400
 
     ydl_opts = {
         'quiet': True,
@@ -18,12 +21,15 @@ def handler(request, response):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
 
-        return response.json({
+        return jsonify({
             "title": info.get("title", "Unknown"),
             "thumbnail": info.get("thumbnail", ""),
             "download_url": info.get("url")
         })
 
     except Exception as e:
-        response.status_code = 500
-        return response.json({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    print("Running Flask app on port 8000...")
+    app.run(debug=True, host="0.0.0.0", port=8000)
